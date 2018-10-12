@@ -419,16 +419,21 @@ public class Board {
         for (Board b : population) {
             System.out.println("Heuristic: " + b.heuristic);
             //totalHeuristic += b.heuristic;
-            totalHeuristic += ((21*(21-1))/2) - population.get(index).heuristic;
-            index++;
+            totalHeuristic += ((21*(21-1))/2) - population.get(index++).heuristic;
             }
             
+        System.out.println("Total Heuristic: " + totalHeuristic);
+
         index = 0;
         for (Board b : population) {
             double d = (((21*(21-1))/2) - b.heuristic)/totalHeuristic;
+            System.out.println("d: " + d);
             d = Math.round(d*100.0);
+            System.out.println("rounded d: " + d);
             fractionRange += d;
-            heuristicPercentArray[index++] = d;
+            
+            //Had a bug here, was setting to d and not fractionRange
+            heuristicPercentArray[index++] = fractionRange;
             
 
             //System.out.println("Percent of: " + b.heuristic + " = " + fractionRange + "%");
@@ -474,7 +479,7 @@ public class Board {
         Board inputBoard = this;
         Board anIndividual;
         //k = initial population size 
-        int populationSize = 5;
+        int populationSize = 4;
         ArrayList<Board> population = makePopulation(populationSize);
         ArrayList<Board> babies = new ArrayList<>();
         
@@ -486,13 +491,18 @@ public class Board {
 
 
         // Choose how many babies to make
-        
         int numBabies = 100;
         Random rand = new Random();
 
         for (int i = 1; i <= numBabies; i++) {
             Board crossOverBoard = getCrossOverBoard(population, heuristicPercentArray);
             Board crossOverBoard2 = getCrossOverBoard(population, heuristicPercentArray);
+            
+            
+            // Is board2 the same as board1 ( You can't smash yourself, get a new one!!)
+            if (crossOverBoard2.equals(crossOverBoard)) {
+                crossOverBoard2 = getCrossOverBoard(population, heuristicPercentArray);
+            }
             
             // Now, we have selected two crossover parents as crossOverBoard1 & crossOverBoard2.
 
@@ -510,9 +520,9 @@ public class Board {
             //Mutation chance of: 80% - gets stuck at h 14 and STUCK at 10.
 
             int randomNumber = rand.nextInt(100) + 1;
-            if (randomNumber <= 70) {
+            if (randomNumber <= 40) {
                 //mutate
-                //System.out.println("Mutating!");
+                System.out.println("Mutating!");
                 baby = generateRandomSuccessorBoard();
             }
 
@@ -561,10 +571,11 @@ public class Board {
                 //Mutation chance of: 80% - gets stuck at h 14 and STUCK at 10.
 
                 int randomNumber = rand.nextInt(100) + 1;
-                if (randomNumber <= 70) {
+                if (randomNumber <= 85) {
                     //mutate
                     //System.out.println("Mutating!");
                     baby = generateRandomSuccessorBoard();
+                    //System.out.println(baby.toString());
                 }
 
             babies.add(baby);
@@ -579,45 +590,10 @@ public class Board {
                 return baby1.heuristic - baby2.heuristic;
             }
         }); 
+        
+ 
         }
-            
-            
-            //Grab five best babies and replace our population with babies.
-            //population.clear();
-            /*
-            for (int a = 0; a < k; a++) {
-                population.remove(a);
-                population.add(babies.get(a));
-            }
-            
-            System.out.println("Population Heuristics:");
-            for (Board b : population)
-                System.out.print(b.heuristic + "\t");
-
-            for (Board b : babies) {
-                //System.out.print("BABY LIST HEURISTICS:");
-                System.out.println("baby h: " + b.heuristic + "\t");
-            } 
-            
-            /*
-             //Grab five best babies and replace our population with babies.
-            population.clear();
-            for (int i = 0; i < k; i++) {
-                population.add(babies.get(i));
-            }
-            System.out.println("Population Heuristics:");
-            for (Board b : population)
-                System.out.print(b.heuristic + "\t");
-
-            for (Board b : babies) {
-                System.out.println("BABY LIST HEURISTICS:");
-                System.out.print("baby h: " + b.heuristic + "\t");
-            }   
-            */
-
-
-        
-        
+   
         return babies.get(0);
     }
     

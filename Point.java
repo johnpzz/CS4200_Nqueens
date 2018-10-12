@@ -9,6 +9,7 @@ package cs4200_Nqueens;
  *
  * @author John
  */
+
 public class Point {
     public int x;
     public int y;

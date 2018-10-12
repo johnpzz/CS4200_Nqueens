@@ -8,6 +8,7 @@ package cs4200_Nqueens;
 //import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -17,6 +18,12 @@ import java.util.Set;
  *
  * @author John
  */
+
+//                  Look into below
+// Figure out a way to have calculateQueenPairs not take in a board as a parameter?
+// Error if I remove the parameter and reference board using this
+// Note: the passed in parameter to calculateQueens returns the heuristic of THAT!
+
 public class Board {
     private int[][] gameBoard;
     private int heuristic;
@@ -27,7 +34,7 @@ public class Board {
     Board() {
         gameBoard = generateBoard();
         listOfQueens = calculateQueens(this);
-        heuristic = calculateConflictingPairs(this);
+        heuristic = calculateConflictingPairs();
     }
     
     
@@ -91,7 +98,7 @@ public class Board {
         return listOfQueens;
     }
     
-    public int calculateConflictingPairs(Board inputBoard) {
+    public int calculateConflictingPairs() {
         ArrayList<Point> queensList = this.listOfQueens;
         int numOfPairs = 0;
         
@@ -248,8 +255,8 @@ public class Board {
     }
     
     
-    public boolean simulatedAnnealing(Board inputBoard) {
-        Board currentBoard = inputBoard;
+    public boolean simulatedAnnealing() {
+        Board currentBoard = this;
         Board nextBoard = new Board(currentBoard);
         //initially a clone board
         double T = 1;
@@ -264,7 +271,7 @@ public class Board {
             deltaE = nextBoard.heuristic - currentBoard.heuristic;
             
             //System.out.println("Current Board H: " + currentBoard.heuristic + ""
-              //      + "\nNext Board H: " + nextBoard.heuristic);
+             //       + "\nNext Board H: " + nextBoard.heuristic);
             
                 //System.out.println("CURR H IS : " + currentBoard.heuristic);
                 //System.out.println("NEXT H IS : " + nextBoard.heuristic);
@@ -293,8 +300,8 @@ public class Board {
         
         if (currentBoard.heuristic == 0) {
             // Success.  Board is solved.
-            //System.out.println(":-) making more happen");
-            //System.out.print(currentBoard.toString());
+            System.out.println(":-) making more happen");
+            System.out.println(currentBoard.toString());
             return true;
         }
 
@@ -340,7 +347,7 @@ public class Board {
         for (Point p : successorBoard.listOfQueens)
             System.out.println(p.x +", " + p.y);
         */
-        successorBoard.heuristic = successorBoard.calculateConflictingPairs(this);
+        successorBoard.heuristic = successorBoard.calculateConflictingPairs();
      
         return successorBoard;
     }
@@ -366,6 +373,303 @@ public class Board {
             return false;
     }
     
+    public ArrayList<Board> makePopulation(int size) {
+        Board anIndividual;
+        ArrayList<Board> populationList = new ArrayList<Board>();
+        
+        for (int i = 1; i <= size; i++) {
+            anIndividual = new Board();
+            anIndividual.gameBoard = anIndividual.generateBoard();
+            anIndividual.listOfQueens = anIndividual.calculateQueens(anIndividual);
+            anIndividual.heuristic = anIndividual.calculateConflictingPairs();
+            populationList.add(anIndividual);
+            System.out.println("Board " + i + " heuristic: " + anIndividual.heuristic);
+        }
+        
+        Collections.sort(populationList, new Comparator() {
+            @Override
+            public int compare(Object o1, Object o2) {
+                Board b1 = (Board) o1;
+                Board b2 = (Board) o2;
+               
+                /*
+                if (b1.heuristic > b2.heuristic)
+                    return 1;
+                else if (b1.heuristic == b2.heuristic)
+                    return 0;
+                else
+                    return -1;
+                */
+
+                return b1.heuristic - b2.heuristic;
+                
+            }
+        });
+        
+        return populationList;
+    }
+    
+    public double[] generateHeuristicFunctionArray(ArrayList<Board> population) {
+       double[] heuristicPercentArray = new double[population.size()];
+        double fractionRange = 0;
+        int index = 0;
+        double totalHeuristic = 0;
+        System.out.println("Sorted heuristics:");
+        
+        for (Board b : population) {
+            System.out.println("Heuristic: " + b.heuristic);
+            //totalHeuristic += b.heuristic;
+            totalHeuristic += ((21*(21-1))/2) - population.get(index).heuristic;
+            index++;
+            }
+            
+        index = 0;
+        for (Board b : population) {
+            double d = (((21*(21-1))/2) - b.heuristic)/totalHeuristic;
+            d = Math.round(d*100.0);
+            fractionRange += d;
+            heuristicPercentArray[index++] = d;
+            
+
+            //System.out.println("Percent of: " + b.heuristic + " = " + fractionRange + "%");
+            System.out.println("Percent of: " + b.heuristic + " = " + fractionRange + "%");
+            }
+
+            System.out.println("Heuristic Percent Array Range: ");
+            for (double i : heuristicPercentArray) {
+                System.out.print(i + "\t");
+            }
+        
+        return heuristicPercentArray;
+    }
+    
+    public Board getCrossOverBoard(ArrayList<Board> population, double[] heuristicPercentArray) {
+        Board crossOverBoard = new Board();
+        Random rand = new Random();
+        int randomIndividualSelection = rand.nextInt(101);
+        
+        //System.out.println("Random number generated: " + randomIndividualSelection);
+
+        
+        for (int d = 0; d < heuristicPercentArray.length; d++) {
+            if (randomIndividualSelection < heuristicPercentArray[d]) {
+                System.out.println("Getting this array's index to make a child of: " + heuristicPercentArray[d]);
+                //select this board index to make a child of
+                crossOverBoard = new Board(population.get((int)d));
+                break;
+            }
+        }
+        
+        return crossOverBoard;
+    }
+    
+    
+    
+    
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////// genetic algorithm //////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    public Board geneticAlgorithm() {
+        Board inputBoard = this;
+        Board anIndividual;
+        //k = initial population size 
+        int populationSize = 5;
+        ArrayList<Board> population = makePopulation(populationSize);
+        ArrayList<Board> babies = new ArrayList<>();
+        
+        // Population is now sorted and exists.  Our babies is empty.
+        
+        double[] heuristicPercentArray = generateHeuristicFunctionArray(population);
+        
+        // Each population member now has a heuristic percent range found in heuristicPercentArray
+
+
+        // Choose how many babies to make
+        
+        int numBabies = 100;
+        Random rand = new Random();
+
+        for (int i = 1; i <= numBabies; i++) {
+            Board crossOverBoard = getCrossOverBoard(population, heuristicPercentArray);
+            Board crossOverBoard2 = getCrossOverBoard(population, heuristicPercentArray);
+            
+            // Now, we have selected two crossover parents as crossOverBoard1 & crossOverBoard2.
+
+            System.out.print("\nGenetic Crossover Parents Heuristics: ");
+            System.out.println(crossOverBoard.heuristic + " " + crossOverBoard2.heuristic);
+
+            //////////////////////////// A CROSSOVER CHANCE TOO????????????? /////////////////////
+            //int random = new Random().nextInt(100) + 1;
+            //if (random <= 60) {
+            Board baby = geneticCrossover(crossOverBoard, crossOverBoard2);
+            baby.heuristic = baby.calculateConflictingPairs();
+            baby.listOfQueens = baby.calculateQueens(baby);
+
+            ////////////////// MUTATION CHANCE //////////////////////
+            //Mutation chance of: 80% - gets stuck at h 14 and STUCK at 10.
+
+            int randomNumber = rand.nextInt(100) + 1;
+            if (randomNumber <= 70) {
+                //mutate
+                //System.out.println("Mutating!");
+                baby = generateRandomSuccessorBoard();
+            }
+
+            babies.add(baby);
+        }
+            
+            
+        // Sort the 100 babies that we have created.
+        babies.sort(new Comparator() {
+            @Override
+            public int compare(Object o1, Object o2) {
+                Board baby1 = (Board) o1;
+                Board baby2 = (Board) o2;
+                return baby1.heuristic - baby2.heuristic;
+            }
+        });
+            
+        while (babies.get(0).heuristic != 0) {
+            //Grab first n babies, where n = size of our population
+            population.clear();
+            for (int i = 0; i < populationSize; i++) {
+                population.add(babies.get(0));
+            }
+            //Population is now replaced with the "fittest" babies.
+            
+            heuristicPercentArray = generateHeuristicFunctionArray(population);
+            //Each population member now has a heuristic percent range found in heuristicPercentArray
+            
+            for (int i = 1; i <= numBabies; i++) {
+                Board crossOverBoard = getCrossOverBoard(population, heuristicPercentArray);
+                Board crossOverBoard2 = getCrossOverBoard(population, heuristicPercentArray);
+
+                // Now, we have selected two crossover parents as crossOverBoard1 & crossOverBoard2.
+
+                System.out.print("\nGenetic Crossover Parents Heuristics: ");
+                System.out.println(crossOverBoard.heuristic + " " + crossOverBoard2.heuristic);
+
+                //////////////////////////// A CROSSOVER CHANCE TOO????????????? /////////////////////
+                //int random = new Random().nextInt(100) + 1;
+                //if (random <= 60) {
+                Board baby = geneticCrossover(crossOverBoard, crossOverBoard2);
+                baby.heuristic = baby.calculateConflictingPairs();
+                baby.listOfQueens = baby.calculateQueens(baby);
+
+                ////////////////// MUTATION CHANCE //////////////////////
+                //Mutation chance of: 80% - gets stuck at h 14 and STUCK at 10.
+
+                int randomNumber = rand.nextInt(100) + 1;
+                if (randomNumber <= 70) {
+                    //mutate
+                    //System.out.println("Mutating!");
+                    baby = generateRandomSuccessorBoard();
+                }
+
+            babies.add(baby);
+        }
+            
+        // Sort the 100 babies that we have created.
+        babies.sort(new Comparator() {
+            @Override
+            public int compare(Object o1, Object o2) {
+                Board baby1 = (Board) o1;
+                Board baby2 = (Board) o2;
+                return baby1.heuristic - baby2.heuristic;
+            }
+        }); 
+        }
+            
+            
+            //Grab five best babies and replace our population with babies.
+            //population.clear();
+            /*
+            for (int a = 0; a < k; a++) {
+                population.remove(a);
+                population.add(babies.get(a));
+            }
+            
+            System.out.println("Population Heuristics:");
+            for (Board b : population)
+                System.out.print(b.heuristic + "\t");
+
+            for (Board b : babies) {
+                //System.out.print("BABY LIST HEURISTICS:");
+                System.out.println("baby h: " + b.heuristic + "\t");
+            } 
+            
+            /*
+             //Grab five best babies and replace our population with babies.
+            population.clear();
+            for (int i = 0; i < k; i++) {
+                population.add(babies.get(i));
+            }
+            System.out.println("Population Heuristics:");
+            for (Board b : population)
+                System.out.print(b.heuristic + "\t");
+
+            for (Board b : babies) {
+                System.out.println("BABY LIST HEURISTICS:");
+                System.out.print("baby h: " + b.heuristic + "\t");
+            }   
+            */
+
+
+        
+        
+        return babies.get(0);
+    }
+    
+    public Board geneticCrossover(Board b1, Board b2) {
+        Board newBoard = new Board();
+        //Split board by a random column, talking halves of both b1 and b2 to create a new board.
+        //Let's take the left half of b1, and the right half of b2.
+        Random rand = new Random();
+        int randomNum = rand.nextInt(21);
+        
+        System.out.println("Genetic crossover random pivot split column: " + randomNum);
+        
+        for (int i = 0; i < b1.gameBoard.length; i++) {
+            for (int j = 0; j < b1.gameBoard[i].length-randomNum; j++) {
+                newBoard.gameBoard[i][j] = b1.gameBoard[i][j];
+            }
+        }
+        
+        for (int i = 0; i < b1.gameBoard.length; i++) {
+            for (int j = randomNum; j < b2.gameBoard[i].length; j++) {
+                newBoard.gameBoard[i][j] = b2.gameBoard[i][j];
+            }
+        }
+        
+        /*
+        for (int i = 0; i < b1.gameBoard.length; i++) {
+            for (int j = 0; j < b1.gameBoard[i].length-randomNum; j++) {
+                b2.gameBoard[i][j] = b1.gameBoard[i][j];
+            }
+        }
+        
+        for (int i = 0; i < b1.gameBoard.length; i++) {
+            for (int j = randomNum; j < b1.gameBoard[i].length; j++) {
+                b2.gameBoard[i][j] = b1.gameBoard[i][j];
+            }
+        }
+        */
+        
+        
+        return newBoard;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
@@ -374,7 +678,12 @@ public class Board {
         // Test board
         Board b = new Board();
         b.listOfQueens = b.calculateQueens(b);
-        b.heuristic = b.calculateConflictingPairs(b);
+        b.heuristic = b.calculateConflictingPairs();
+        
+        b.geneticAlgorithm();
+        
+        
+        
         /*
         for (Point p : b.listOfQueens)
             System.out.println(p.x +", "+p.y);
@@ -387,17 +696,20 @@ public class Board {
         System.out.println(childBoard.toString());
         */
         
+        ///////////////////////////////////////////////
+        /*
         int numOfSuccesses = 0;
         for (int i = 1; i <= 500; i++) {
             System.out.println("Run " + i +":");
-            boolean solved = b.simulatedAnnealing(b);
+            boolean solved = b.simulatedAnnealing();
             if (solved == true) {
                 numOfSuccesses += 1;
             }
         }
         double avgSuccesses = numOfSuccesses/500;
         System.out.println("Avg Successes: " + avgSuccesses);
-        
+        */
+        //////////////////////////////////////////////
         //System.out.println("Heuristic: " + b.heuristic);
         
     }
